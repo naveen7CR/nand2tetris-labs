@@ -45,3 +45,84 @@ print(repr(clean("// only a comment")))
 
 print(COMP["D+A"], DEST["D"], JUMP[""])
 print(SYMBOLS["R5"], SYMBOLS["SCREEN"])
+
+import os
+import sys
+
+
+def first_pass(raw_lines):
+    labels = {}          # label name -> instruction number
+    instructions = []    # sirf real instructions
+    for raw in raw_lines:
+        line = clean(raw)
+        if line == "":
+            continue
+        if line.startswith("("):
+            labels[line[1:-1]] = len(instructions)   # label ka number = agli real instruction
+        else:
+            instructions.append(line)
+    return instructions, labels
+
+
+def translate_c(line):
+    dest = ""
+    jump = ""
+    comp = line
+    if "=" in comp:
+        dest, comp = comp.split("=")
+    if ";" in comp:
+        comp, jump = comp.split(";")
+    return "111" + COMP[comp] + DEST[dest] + JUMP[jump]
+
+
+def second_pass(instructions, labels):
+    symbols = dict(SYMBOLS)
+    symbols.update(labels)
+    variables = {}
+    next_addr = 16                       # naye variables 16 se start hote hain
+    output = []
+    for line in instructions:
+        if line.startswith("@"):
+            name = line[1:]
+            if name.isdigit():
+                value = int(name)
+            else:
+                if name not in symbols:
+                    symbols[name] = next_addr
+                    variables[name] = next_addr
+                    next_addr += 1
+                value = symbols[name]
+            output.append(format(value, "016b"))
+        else:
+            output.append(translate_c(line))
+    return output, variables
+
+
+def main():
+    if len(sys.argv) != 2:
+        print("Usage: python3 assembler.py File.asm")
+        return
+    path = sys.argv[1]
+    with open(path) as f:
+        raw = f.read().splitlines()
+
+    instructions, labels = first_pass(raw)
+    binary, variables = second_pass(instructions, labels)
+
+    base = os.path.splitext(path)[0]
+    with open(base + ".hack", "w") as f:
+        f.write("\n".join(binary) + "\n")
+
+    # K = 63 -> 63 mod 3 = 0 -> symbols.txt feature
+    folder = os.path.dirname(os.path.abspath(path))
+    with open(os.path.join(folder, "symbols.txt"), "w") as f:
+        for name, addr in labels.items():
+            f.write(name + " " + str(addr) + "\n")
+        for name, addr in variables.items():
+            f.write(name + " " + str(addr) + "\n")
+
+    print("Done:", base + ".hack", "|", len(binary), "instructions")
+
+
+if __name__ == "__main__":
+    main()
