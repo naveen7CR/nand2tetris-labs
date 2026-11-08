@@ -14,6 +14,10 @@ COMP = {
     "D|M": "1010101",
 }
 
+def clean(line):
+    line = line.split("//")[0]     
+    line = "".join(line.split()) 
+    return line
 # dest part: 3 bits = A, D, M
 DEST = {
     "":    "000", "M":   "001", "D":   "010", "MD":  "011",
@@ -33,6 +37,10 @@ SYMBOLS = {
 }
 for i in range(16):
     SYMBOLS["R" + str(i)] = i
+
+
+print(repr(clean("   D=D+A   // add\n")))
+print(repr(clean("// only a comment")))
 
 
 print(COMP["D+A"], DEST["D"], JUMP[""])
